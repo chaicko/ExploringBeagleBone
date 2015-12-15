@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+#check if we are root first
+ROOT_UID=0     # Only users with $UID 0 have root privileges.
+E_NOTROOT=87   # Non-root exit error.
+
+# Run as root, of course.
+if [ "$UID" -ne "$ROOT_UID" ]; then
+  echo "Must be root to run this script."
+  exit $E_NOTROOT
+fi 
+
+#default interface values
+DEFAULT_MAIN_IFACE=eth1
+DEFAULT_BBB_IFACE=eth2
+E_IPTABLES=88  # iptables error
+
+# interface variables
+main_iface=${1:-$DEFAULT_MAIN_IFACE}
+bbb_iface=${2:-$DEFAULT_BBB_IFACE}
+
+# Set up the rules
+(iptables --table nat --append POSTROUTING --out-interface $main_iface -j MASQUERADE && echo "successfully set rule for iface $main_iface") \
+	|| (echo "failed to set rule for iface $main_iface" && exit $E_IPTABLES)
+
+(iptables --append FORWARD --in-interface $bbb_iface -j ACCEPT && echo "successfully set rule for iface $bbb_iface") \
+	|| (echo "failed to set rule for iface $bbb_iface" && exit $E_IPTABLES)
+
+echo 1 > /proc/sys/net/ipv4/ip_forward && echo "IP forwarding enabled"
+
+exit 0
